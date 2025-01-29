@@ -1,0 +1,106 @@
+---
+title: "Data Cleaning"
+author: "Chris"
+date: "2025-01-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+First we pull in the spreadsheet.
+```{r import}
+## install.packages("readr")
+library(readr)
+data <- read.csv("data/Rainydawg_top_music_of_2024_Survey.csv")
+
+#summary(data)
+
+library(tidyr)
+library(dplyr)
+
+#Here we drop the first row, it's a placeholder.
+data <- data[-1, ]
+
+#Fix our columns, we want unique names and no spaces. Plug it in.
+new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes")
+colnames(data) <- new_column_names
+
+# We only care about the entries at this point. DJ and names can be useful later. Create a new list() for entries.
+columns_to_process <- c("Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21")
+entries_list <- list()
+
+# take each column, separate them into two columns for artist and title, and trim the whitespace
+# save
+for (column in columns_to_process) {
+  temp_df <- data.frame(Column = data[[column]])
+  temp_entries <- temp_df %>% 
+    separate(col = Column, into = c("Artist", "Title"), sep = "-+", remove = TRUE) %>% 
+    mutate(across(c(Artist, Title), trimws))
+  entries_list[[length(entries_list) + 1]] <- temp_entries
+}
+
+names(entries_list) <- columns_to_process
+
+#Create a new list for sorting popular count
+countedEntriesList <- bind_rows(entries_list)
+
+#Drop any rows that are incomplete
+countedEntriesList <- drop_na(countedEntriesList) 
+
+
+```
+We use stringdist below, to make a comparison of the artist name against the vector,
+ask it to be within a threshold of 2 differences.
+```{r}
+# Install and load the stringdist package
+##install.packages("stringdist")
+library(stringdist)
+
+# Create a copy of countedReleasesList
+ArtistsList <- countedEntriesList
+
+unique_artists <- unique(countedEntriesList$Artist)
+# Iterate through ArtistsList
+for (i in 1:nrow(ArtistsList)) {
+  artist <- ArtistsList$Artist[i]
+  similar_artists <- unique_artists[stringdist(artist, unique_artists) <= 2]
+  ArtistsList$Count[i] <- sum(ArtistsList$Artist %in% similar_artists)
+}
+
+# Count occurrences of each artist name and deduplicate
+countedArtistsList <- ArtistsList %>% 
+  group_by(Artist) %>% 
+  summarise(Count = n())
+
+#Save our list of artists and count of appearances. Need to manually check this before
+#using it later.
+write_csv(countedArtistsList, "output/countedArtistsList.csv")
+```
+Then we do a similar thing for our Releases, and we go back to our entries.
+
+```{r}
+# Create a copy of countedReleasesList
+ReleasesList <- countedEntriesList
+
+unique_releases <- unique(countedEntriesList$Title)
+# Iterate through
+for (i in 1:nrow(ReleasesList)) {
+  title <- ReleasesList$Title[i]
+  similar_releases <- unique_releases[stringdist(title, unique_releases) <= 2]
+  ReleasesList$Count[i] <- sum(ReleasesList$Title %in% similar_releases)
+}
+
+# Count occurrences of each artist name and deduplicate
+countedReleasesList <- ReleasesList %>% 
+  group_by(Title) %>% 
+  summarise(Count = n())
+
+#Save our list of releases and count of appearances. Need to manually check this before
+#using it later.
+write_csv(countedReleasesList, "output/countedReleasesList.csv")
+```
+
