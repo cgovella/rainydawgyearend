@@ -112,4 +112,47 @@ countedReleasesList <- ReleasesList %>%
 write_xlsx(countedReleasesList, "output/countedReleasesList.xlsx")
 #write_csv(countedReleasesList, "output/countedReleasesList.csv")
 ```
+Creating a weighted list
+```{r}
+# Loop through the list of dataframes
+for (i in 1:length(entries_list)) {
+  # Calculate the weight value based on the position in the list
+  weight_value <- 1 / i
+  
+  # Add a new column 'weight' to the current dataframe
+  entries_list[[i]]$weight <- rep(weight_value, nrow(entries_list[[i]]))
+}
+
+#Create a new list for sorting popular count
+weightedEntriesList <- bind_rows(entries_list)
+weightedEntriesList <- drop_na(weightedEntriesList) 
+write_xlsx(weightedEntriesList, "output/weightedEntriesList.xlsx")
+#Drop any rows that are incomplete
+# #Loop through the list of dataframes
+# for (i in 1:length(weightedEntriesList)) {
+#   weightedEntriesList[[i]] <- weightedEntriesList[[i]] %>% 
+#     filter(!(is.na(Artist) & is.na(Title)) & !(Artist == "" & Title == ""))
+# }
+
+# # Loop through the list of dataframes
+# for (i in 1:length(weightedEntriesList)) {
+#   # Convert weightedEntriesList[[i]] to a dataframe if it's not already one
+#   df <- as.data.frame(weightedEntriesList[[i]])
+#   
+#   # Apply filter() function to remove rows where both 'Artist' and 'Title' columns are NA or blank
+#   df <- df %>% 
+#     filter(!(is.na(Artist) & is.na(Title)) & !(Artist == "" & Title == ""))
+#   
+#   # Replace my_list[[i]] with the filtered dataframe
+#   weightedEntriesList[[i]] <- df
+# }
+# weightedEntriesList <- drop_na(countedEntriesList) 
+df <- read_excel("output/weightedEntriesList_clean.xlsx")
+df <- df %>% 
+  group_by(Artist, Title) %>% 
+  mutate(sum = sum(weight)) %>% 
+  ungroup()
+
+write_xlsx(df, "output/EntriesListByInclusion.xlsx")
+```
 
