@@ -14,8 +14,12 @@ knitr::opts_chunk$set(echo = TRUE)
 First we pull in the spreadsheet.
 ```{r import}
 ## install.packages("readr")
-library(readr)
-data <- read.csv("data/Rainydawg_top_music_of_2024_Survey.csv")
+#library(readr)
+#data <- read.csv("data/Rainydawg_top_music_of_2024_Survey.csv")
+#install.packages("readxl")
+library(readxl)
+data <- read_excel("data/Rainydawg_top_music_of_2024_Survey.xlsx")
+
 
 #summary(data)
 
@@ -78,7 +82,11 @@ countedArtistsList <- ArtistsList %>%
 
 #Save our list of artists and count of appearances. Need to manually check this before
 #using it later.
-write_csv(countedArtistsList, "output/countedArtistsList.csv")
+# Install and load the writexl package
+#install.packages("writexl")
+library(writexl)
+write_xlsx(countedArtistsList, "output/countedArtistsList.xlsx")
+#write_csv(countedArtistsList, "output/countedArtistsList.csv")
 ```
 Then we do a similar thing for our Releases, and we go back to our entries.
 
@@ -101,6 +109,7 @@ countedReleasesList <- ReleasesList %>%
 
 #Save our list of releases and count of appearances. Need to manually check this before
 #using it later.
-write_csv(countedReleasesList, "output/countedReleasesList.csv")
+write_xlsx(countedReleasesList, "output/countedReleasesList.xlsx")
+#write_csv(countedReleasesList, "output/countedReleasesList.csv")
 ```
 
