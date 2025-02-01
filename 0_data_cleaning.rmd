@@ -39,10 +39,13 @@ Now we look at the first list...need to pull our artist and title into separate 
 ## We only care about the entries at this point. DJ and
 ##names can be useful later.
 ## Keep only the columns that contain artist-title pairs.
+## also remove the Rank21 column. The original proposition was was top 20,
+## I made an error on the input form, and added an extra row.
 data <- data %>% select(-Timestamp, 
                     -Email,
                     -Name,
                     -Role,
+                    -Rank21, 
                     -Extra,
                     -Notes)
 
@@ -55,6 +58,17 @@ for (column in names(data)) {
     mutate(across(c(Artist, Title), trimws))
   entries_list[[length(entries_list) + 1]] <- temp_entries
 }
+
+# Loop through the list of dataframes
+for (i in 1:length(entries_list)) {
+  # Calculate the weight value based on the position in the list
+  weight_value <- 1 / i
+  
+  # Add a new column 'weight' to the current dataframe
+  entries_list[[i]]$weight <- rep(weight_value, nrow(entries_list[[i]]))
+}
+
+
 #Create a new list for sorting popular count
 countedEntriesList <- bind_rows(entries_list)
 ## you need to catch this title bc it was input incorrectly
@@ -72,7 +86,8 @@ countedEntriesList$TitletoLowercase <- str_replace_all(countedEntriesList$Titlet
 countedEntriesList$TitletoLowercase <- str_remove_all(countedEntriesList$TitletoLowercase, "[[:punct:]]")
 countedEntriesList$ArtisttoLowercase <- iconv(countedEntriesList$ArtisttoLowercase, from = "UTF-8", to = "ASCII//TRANSLIT")
 countedEntriesList$ArtisttoLowercase <- str_remove_all(countedEntriesList$ArtisttoLowercase, "[[:punct:]]")
-## this is a true count by inclusion, so should rename the output.
+## Q1: do we count brat and brat remix as the same release?
+countedEntriesList$TitletoLowercase <- gsub("brat and its completely different but also still brat", "brat", countedEntriesList$TitletoLowercase)
 countedEntriesList
 
 
@@ -116,40 +131,24 @@ Then we do a similar thing for our Releases, and we go back to our entries.
 # Create a copy of countedReleasesList
 
 countedReleasesList <- countedEntriesList
-countedReleasesList$CountOfMentions <- sapply(seq_along(countedReleasesList$TitletoLower), function(i) sum(stringdist::stringdist(countedReleasesList$TitletoLower[i], countedReleasesList$TitletoLower) <= 1))
-
+countedReleasesList$CountOfMentions <- sapply(seq_along(countedReleasesList$TitletoLowercase), function(i) sum(stringdist::stringdist(countedReleasesList$TitletoLowercase[i], countedReleasesList$TitletoLowercase) <= 1))
+countedReleasesList 
 #Save our list of releases and count of appearances. Need to manually check this before
 #using it later.
 write_xlsx(countedReleasesList, "output/countedReleasesList.xlsx")
 ```
 Creating a weighted list
 ```{r}
-# Loop through the list of dataframes
-for (i in 1:length(entries_list)) {
-  # Calculate the weight value based on the position in the list
-  weight_value <- 1 / i
-  
-  # Add a new column 'weight' to the current dataframe
-  entries_list[[i]]$weight <- rep(weight_value, nrow(entries_list[[i]]))
-}
+ 
 
 #Create a new list for sorting popular count
-weightedEntriesList <- bind_rows(entries_list)
-# Create a new column 'toLower' in weightedEntriessList with lowercase values from 'Title'
-weightedEntriesList$toLower <- tolower(weightedEntriesList$Title)
-weightedEntriesList <- drop_na(weightedEntriesList) 
-weightedEntriesList
-```
-Save to a file
-```{r}
+weightedReleasesList <- countedEntriesList
 
-write_xlsx(weightedEntriesList, "output/weightedEntriesList.xlsx")
-df <- read_excel("output/weightedEntriesList_clean.xlsx")
-df <- df %>% 
-  group_by(toLower) %>% 
+df <- weightedReleasesList %>% 
+  group_by(TitletoLowercase) %>% 
   mutate(sum = sum(weight)) %>% 
   ungroup()
 
-write_xlsx(df, "output/EntriesListByInclusion.xlsx")
+write_xlsx(df, "output/weightedReleasesList.xlsx")
 ```
 
