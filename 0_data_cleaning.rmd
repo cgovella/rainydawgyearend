@@ -13,33 +13,35 @@ knitr::opts_chunk$set(echo = TRUE)
 
 First we pull in the spreadsheet.
 ```{r import}
-## install.packages("readr")
-#library(readr)
-#data <- read.csv("data/Rainydawg_top_music_of_2024_Survey.csv")
-#install.packages("readxl")
 library(readxl)
 data <- read_excel("data/Rainydawg_top_music_of_2024_Survey.xlsx")
-
-
+## What are we looking at here, let's summary()
 #summary(data)
 
 library(tidyr)
 library(dplyr)
-
-#Here we drop the first row, it's a placeholder.
+#Here we drop the first row, it's a placeholder
 data <- data[-1, ]
+
+# create a new empty, list() for all our entries
+entries_list <- list()
 
 #Fix our columns, we want unique names and no spaces. Plug it in.
 new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes")
 colnames(data) <- new_column_names
 
-# We only care about the entries at this point. DJ and names can be useful later. Create a new list() for entries.
-columns_to_process <- c("Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21")
-entries_list <- list()
+## We only care about the entries at this point. DJ and names can be useful later.
+## Keep only the columns that contain artist-title pairs.
+data <- data %>% select(-Timestamp, 
+                    -Email,
+                    -Name,
+                    -Role,
+                    -Extra,
+                    -Notes)
 
-# take each column, separate them into two columns for artist and title, and trim the whitespace
-# save
-for (column in columns_to_process) {
+# take each column, separate them into two columns for artist and title, 
+# and trim the whitespace and save into entries_list()
+for (column in names(data)) {
   temp_df <- data.frame(Column = data[[column]])
   temp_entries <- temp_df %>% 
     separate(col = Column, into = c("Artist", "Title"), sep = "-+", remove = TRUE) %>% 
@@ -47,14 +49,12 @@ for (column in columns_to_process) {
   entries_list[[length(entries_list) + 1]] <- temp_entries
 }
 
-names(entries_list) <- columns_to_process
-
 #Create a new list for sorting popular count
 countedEntriesList <- bind_rows(entries_list)
 
 #Drop any rows that are incomplete
 countedEntriesList <- drop_na(countedEntriesList) 
-
+## this is a true count by inclusion, so should rename the output.
 
 ```
 We use stringdist below, to make a comparison of the artist name against the vector,
