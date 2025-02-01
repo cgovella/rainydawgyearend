@@ -119,6 +119,8 @@ for (i in 1:length(entries_list)) {
 
 #Create a new list for sorting popular count
 weightedEntriesList <- bind_rows(entries_list)
+# Create a new column 'toLower' in weightedEntriessList with lowercase values from 'Title'
+weightedEntriesList$toLower <- tolower(weightedEntriesList$Title)
 weightedEntriesList <- drop_na(weightedEntriesList) 
 write_xlsx(weightedEntriesList, "output/weightedEntriesList.xlsx")
 #Drop any rows that are incomplete
@@ -143,7 +145,7 @@ write_xlsx(weightedEntriesList, "output/weightedEntriesList.xlsx")
 # weightedEntriesList <- drop_na(countedEntriesList) 
 df <- read_excel("output/weightedEntriesList_clean.xlsx")
 df <- df %>% 
-  group_by(Artist, Title) %>% 
+  group_by(toLower) %>% 
   mutate(sum = sum(weight)) %>% 
   ungroup()
 
