@@ -24,7 +24,7 @@ print.data.frame(djNames)
 ## Top Releases by DJ #1 Votes
 ```{r}
 print.data.frame(countedReleasesList %>%
-                   select(ArtisttoLowercase, TitletoLowercase, weight) %>% 
+                   select(Artist, Title, weight, TitletoLowercase) %>% 
                    filter(weight == 1) %>% 
                    arrange(TitletoLowercase))
 
@@ -40,7 +40,7 @@ E.g., a rank of #1 would be a weight of 1, a rank of #5 would be a weight of 1/5
 ```{r pressure, echo=FALSE}
 library(dplyr)
 print.data.frame(df %>% 
-                   select(ArtisttoLowercase, TitletoLowercase, sum) %>% 
+                   select(Artist, Title, sum, TitletoLowercase) %>% 
                    distinct(TitletoLowercase, .keep_all = TRUE) %>% 
                    arrange(desc(sum)))
 
@@ -53,9 +53,9 @@ Just by mentions
 
 ```{r, echo=FALSE}
 print.data.frame(countedReleasesList %>% 
-                   select(ArtisttoLowercase, TitletoLowercase, CountOfMentions) %>% 
+                   select(Artist, Title, CountOfMentions, TitletoLowercase) %>% 
                    distinct(TitletoLowercase, .keep_all = TRUE) %>% 
-                   arrange(desc(CountOfMentions)))
+                   arrange(desc(CountOfMentions), TitletoLowercase))
 
 ```
 
@@ -67,9 +67,9 @@ Artists by mentions
 
 ```{r, echo=FALSE}
 print.data.frame(ArtistsList %>% 
-                   select(ArtisttoLowercase, TitletoLowercase, Count) %>% 
+                   select(Artist, Count, ArtisttoLowercase) %>% 
                    distinct(ArtisttoLowercase, .keep_all = TRUE) %>% 
-                   arrange(desc(Count)))
+                   arrange(desc(Count), ArtisttoLowercase))
 
 ```
 
@@ -78,7 +78,7 @@ print.data.frame(ArtistsList %>%
 ```{r}
 print.data.frame(weightedReleasesList %>% 
                    distinct(TitletoLowercase, .keep_all = TRUE) %>%
-                   select(ArtisttoLowercase, TitletoLowercase) %>% 
+                   select(Artist, Title, TitletoLowercase) %>% 
                    arrange(TitletoLowercase))
 ```
 
