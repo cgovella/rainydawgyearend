@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Import our Data
 
 First we pull in the spreadsheet.
 ```{r import}
@@ -29,8 +29,15 @@ entries_list <- list()
 #Fix our columns, we want unique names and no spaces. Plug it in.
 new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes")
 colnames(data) <- new_column_names
+data
+```
 
-## We only care about the entries at this point. DJ and names can be useful later.
+## Make it Clean
+Now we look at the first list...need to pull our artist and title into separate columns.
+```{r List by Count}
+
+## We only care about the entries at this point. DJ and
+##names can be useful later.
 ## Keep only the columns that contain artist-title pairs.
 data <- data %>% select(-Timestamp, 
                     -Email,
@@ -48,13 +55,26 @@ for (column in names(data)) {
     mutate(across(c(Artist, Title), trimws))
   entries_list[[length(entries_list) + 1]] <- temp_entries
 }
-
 #Create a new list for sorting popular count
 countedEntriesList <- bind_rows(entries_list)
+## you need to catch this title bc it was input incorrectly
+countedEntriesList$Title <- gsub("I LAY MY LIFE DOWN FOR YOU", "I LAY DOWN MY LIFE FOR YOU", countedEntriesList$Title)
 
 #Drop any rows that are incomplete
 countedEntriesList <- drop_na(countedEntriesList) 
+#Put the artist into lowercase for all entries
+countedEntriesList$ArtisttoLowercase <- tolower(countedEntriesList$Artist)
+#Put the title into lowercase for all entries
+countedEntriesList$TitletoLowercase <- tolower(countedEntriesList$Title)
+
+library(stringr)
+countedEntriesList$TitletoLowercase <- str_replace_all(countedEntriesList$TitletoLowercase, "&", "and")
+countedEntriesList$TitletoLowercase <- str_remove_all(countedEntriesList$TitletoLowercase, "[[:punct:]]")
+countedEntriesList$ArtisttoLowercase <- iconv(countedEntriesList$ArtisttoLowercase, from = "UTF-8", to = "ASCII//TRANSLIT")
+countedEntriesList$ArtisttoLowercase <- str_remove_all(countedEntriesList$ArtisttoLowercase, "[[:punct:]]")
 ## this is a true count by inclusion, so should rename the output.
+countedEntriesList
+
 
 ```
 We use stringdist below, to make a comparison of the artist name against the vector,
@@ -67,26 +87,28 @@ library(stringdist)
 # Create a copy of countedReleasesList
 ArtistsList <- countedEntriesList
 
-unique_artists <- unique(countedEntriesList$Artist)
+unique_artists <- unique(countedEntriesList$ArtisttoLowercase)
 # Iterate through ArtistsList
 for (i in 1:nrow(ArtistsList)) {
-  artist <- ArtistsList$Artist[i]
-  similar_artists <- unique_artists[stringdist(artist, unique_artists) <= 2]
-  ArtistsList$Count[i] <- sum(ArtistsList$Artist %in% similar_artists)
+  artist <- ArtistsList$ArtisttoLowercase[i]
+  similar_artists <- unique_artists[stringdist(artist, unique_artists) <= 1]
+  ArtistsList$Count[i] <- sum(ArtistsList$ArtisttoLowercase %in% similar_artists)
 }
 
 # Count occurrences of each artist name and deduplicate
 countedArtistsList <- ArtistsList %>% 
   group_by(Artist) %>% 
-  summarise(Count = n())
-
+  summarise(Count = n()) 
+ArtistsList
 #Save our list of artists and count of appearances. Need to manually check this before
 #using it later.
 # Install and load the writexl package
 #install.packages("writexl")
 library(writexl)
-write_xlsx(countedArtistsList, "output/countedArtistsList.xlsx")
-#write_csv(countedArtistsList, "output/countedArtistsList.csv")
+write_xlsx(ArtistsList, "output/countedArtistsList.xlsx")
+# NOTE:
+# you still have to clean this, the Waxahatchee ft MJL will get missed.
+
 ```
 Then we do a similar thing for our Releases, and we go back to our entries.
 
@@ -94,13 +116,7 @@ Then we do a similar thing for our Releases, and we go back to our entries.
 # Create a copy of countedReleasesList
 
 countedReleasesList <- countedEntriesList
-# Create a new column 'toLower' in countedReleasesList with lowercase values from 'Title'
-countedReleasesList$toLower <- tolower(countedReleasesList$Title)
-
-library(dplyr)
-library(stringdist)
-
-countedReleasesList$CountOfMentions <- sapply(seq_along(countedReleasesList$toLower), function(i) sum(stringdist::stringdist(countedReleasesList$toLower[i], countedReleasesList$toLower) <= 2) - 1)
+countedReleasesList$CountOfMentions <- sapply(seq_along(countedReleasesList$TitletoLower), function(i) sum(stringdist::stringdist(countedReleasesList$TitletoLower[i], countedReleasesList$TitletoLower) <= 1))
 
 #Save our list of releases and count of appearances. Need to manually check this before
 #using it later.
@@ -122,27 +138,12 @@ weightedEntriesList <- bind_rows(entries_list)
 # Create a new column 'toLower' in weightedEntriessList with lowercase values from 'Title'
 weightedEntriesList$toLower <- tolower(weightedEntriesList$Title)
 weightedEntriesList <- drop_na(weightedEntriesList) 
-write_xlsx(weightedEntriesList, "output/weightedEntriesList.xlsx")
-#Drop any rows that are incomplete
-# #Loop through the list of dataframes
-# for (i in 1:length(weightedEntriesList)) {
-#   weightedEntriesList[[i]] <- weightedEntriesList[[i]] %>% 
-#     filter(!(is.na(Artist) & is.na(Title)) & !(Artist == "" & Title == ""))
-# }
+weightedEntriesList
+```
+Save to a file
+```{r}
 
-# # Loop through the list of dataframes
-# for (i in 1:length(weightedEntriesList)) {
-#   # Convert weightedEntriesList[[i]] to a dataframe if it's not already one
-#   df <- as.data.frame(weightedEntriesList[[i]])
-#   
-#   # Apply filter() function to remove rows where both 'Artist' and 'Title' columns are NA or blank
-#   df <- df %>% 
-#     filter(!(is.na(Artist) & is.na(Title)) & !(Artist == "" & Title == ""))
-#   
-#   # Replace my_list[[i]] with the filtered dataframe
-#   weightedEntriesList[[i]] <- df
-# }
-# weightedEntriesList <- drop_na(countedEntriesList) 
+write_xlsx(weightedEntriesList, "output/weightedEntriesList.xlsx")
 df <- read_excel("output/weightedEntriesList_clean.xlsx")
 df <- df %>% 
   group_by(toLower) %>% 
