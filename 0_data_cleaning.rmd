@@ -30,6 +30,10 @@ entries_list <- list()
 new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes")
 colnames(data) <- new_column_names
 data
+## get the DJ names list
+djNames <- data %>%  select(Name)
+
+
 ```
 
 ## Make it Clean
@@ -88,6 +92,8 @@ countedEntriesList$ArtisttoLowercase <- iconv(countedEntriesList$ArtisttoLowerca
 countedEntriesList$ArtisttoLowercase <- str_remove_all(countedEntriesList$ArtisttoLowercase, "[[:punct:]]")
 ## Q1: do we count brat and brat remix as the same release?
 countedEntriesList$TitletoLowercase <- gsub("brat and its completely different but also still brat", "brat", countedEntriesList$TitletoLowercase)
+## clean more incorrect inputs
+countedEntriesList$ArtisttoLowercase <- gsub("caroline polacheck", "caroline polachek", countedEntriesList$ArtisttoLowercase)
 countedEntriesList
 
 
