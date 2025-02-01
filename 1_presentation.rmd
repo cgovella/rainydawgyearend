@@ -1,0 +1,85 @@
+---
+title: "1_tables"
+author: "chris"
+date: "2025-02-01"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Intro
+
+Number of Lists included: 12
+provided by:
+```{r}
+print.data.frame(djNames)
+```
+
+
+## Top Releases by DJ #1 Votes
+```{r}
+print.data.frame(countedReleasesList %>%
+                   select(ArtisttoLowercase, TitletoLowercase, weight) %>% 
+                   filter(weight == 1) %>% 
+                   arrange(TitletoLowercase))
+
+```
+
+## Top Releases
+
+Weighted by rank:
+The number in the sum column is there for math, just pay attention to the list
+from top to bottom. For the ranking of each release, I calculated the weight as a fraction. The 
+numerator is always 1, and the denominator is the rank that the DJ assigned it. 
+E.g., a rank of #1 would be a weight of 1, a rank of #5 would be a weight of 1/5, or 0.2.
+```{r pressure, echo=FALSE}
+library(dplyr)
+print.data.frame(df %>% 
+                   select(ArtisttoLowercase, TitletoLowercase, sum) %>% 
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>% 
+                   arrange(desc(sum)))
+
+```
+
+
+## Top Releases by Inclusion
+
+Just by mentions
+
+```{r, echo=FALSE}
+print.data.frame(countedReleasesList %>% 
+                   select(ArtisttoLowercase, TitletoLowercase, CountOfMentions) %>% 
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>% 
+                   arrange(desc(CountOfMentions)))
+
+```
+
+## Top Artists
+
+## Top Artists by Inclusion
+
+Artists by mentions
+
+```{r, echo=FALSE}
+print.data.frame(ArtistsList %>% 
+                   select(ArtisttoLowercase, TitletoLowercase, Count) %>% 
+                   distinct(ArtisttoLowercase, .keep_all = TRUE) %>% 
+                   arrange(desc(Count)))
+
+```
+
+
+## Unique Releases
+```{r}
+print.data.frame(weightedReleasesList %>% 
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>%
+                   select(ArtisttoLowercase, TitletoLowercase) %>% 
+                   arrange(TitletoLowercase))
+```
+
+
