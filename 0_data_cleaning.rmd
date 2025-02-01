@@ -92,25 +92,19 @@ Then we do a similar thing for our Releases, and we go back to our entries.
 
 ```{r}
 # Create a copy of countedReleasesList
-ReleasesList <- countedEntriesList
 
-unique_releases <- unique(countedEntriesList$Title)
-# Iterate through
-for (i in 1:nrow(ReleasesList)) {
-  title <- ReleasesList$Title[i]
-  similar_releases <- unique_releases[stringdist(title, unique_releases) <= 2]
-  ReleasesList$Count[i] <- sum(ReleasesList$Title %in% similar_releases)
-}
+countedReleasesList <- countedEntriesList
+# Create a new column 'toLower' in countedReleasesList with lowercase values from 'Title'
+countedReleasesList$toLower <- tolower(countedReleasesList$Title)
 
-# Count occurrences of each artist name and deduplicate
-countedReleasesList <- ReleasesList %>% 
-  group_by(Title) %>% 
-  summarise(Count = n())
+library(dplyr)
+library(stringdist)
+
+countedReleasesList$CountOfMentions <- sapply(seq_along(countedReleasesList$toLower), function(i) sum(stringdist::stringdist(countedReleasesList$toLower[i], countedReleasesList$toLower) <= 2) - 1)
 
 #Save our list of releases and count of appearances. Need to manually check this before
 #using it later.
 write_xlsx(countedReleasesList, "output/countedReleasesList.xlsx")
-#write_csv(countedReleasesList, "output/countedReleasesList.csv")
 ```
 Creating a weighted list
 ```{r}
