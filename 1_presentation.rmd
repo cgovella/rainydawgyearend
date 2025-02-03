@@ -15,19 +15,28 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Intro
 
 Number of Lists included: 12
-provided by:
+provided by: Rainydawg DJs, Blawg Team, and Volunteers
 ```{r}
+#install.packages("openxlsx")
+library(openxlsx)
 print.data.frame(djNames)
 ```
 
 
-## Top Releases by DJ #1 Votes
+## Top Releases by RainyDawg #1 Votes
+
+Everybody's favorite contribution from 2024, alphabetical by Title:
+
 ```{r}
 print.data.frame(countedReleasesList %>%
                    select(Artist, Title, weight, TitletoLowercase) %>% 
                    filter(weight == 1) %>% 
                    arrange(TitletoLowercase))
-
+# Write the dataframe to an Excel file
+write.xlsx(countedReleasesList %>%
+             select(Artist, Title, weight, TitletoLowercase) %>% 
+             filter(weight == 1) %>% 
+             arrange(TitletoLowercase), "output/TopReleasesByNum1Votes.xlsx")
 ```
 
 ## Top Releases
@@ -35,7 +44,7 @@ print.data.frame(countedReleasesList %>%
 Weighted by rank:
 The number in the sum column is there for math, just pay attention to the list
 from top to bottom. For the ranking of each release, I calculated the weight as a fraction. The 
-numerator is always 1, and the denominator is the rank that the DJ assigned it. 
+numerator is always 1, and the denominator is the rank that the contributor assigned it. 
 E.g., a rank of #1 would be a weight of 1, a rank of #5 would be a weight of 1/5, or 0.2.
 ```{r pressure, echo=FALSE}
 library(dplyr)
@@ -43,7 +52,10 @@ print.data.frame(df %>%
                    select(Artist, Title, sum, TitletoLowercase) %>% 
                    distinct(TitletoLowercase, .keep_all = TRUE) %>% 
                    arrange(desc(sum)))
-
+write.xlsx(df %>%
+             select(Artist, Title, sum, TitletoLowercase) %>% 
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>% 
+                   arrange(desc(sum)), "output/TopReleases.xlsx", rowNames = TRUE)
 ```
 
 
@@ -56,30 +68,41 @@ print.data.frame(countedReleasesList %>%
                    select(Artist, Title, CountOfMentions, TitletoLowercase) %>% 
                    distinct(TitletoLowercase, .keep_all = TRUE) %>% 
                    arrange(desc(CountOfMentions), TitletoLowercase))
-
+write.xlsx(countedReleasesList %>%
+             select(Artist, Title, CountOfMentions, TitletoLowercase) %>% 
+             distinct(TitletoLowercase, .keep_all = TRUE) %>% 
+             arrange(desc(CountOfMentions), TitletoLowercase),
+           "output/TopReleasesbyInclusion.xlsx", rowNames = TRUE)
 ```
 
-## Top Artists
+<!-- ## Top Artists -->
 
-## Top Artists by Inclusion
+<!-- ## Top Artists by Inclusion -->
 
-Artists by mentions
+<!-- Artists by mentions -->
 
-```{r, echo=FALSE}
-print.data.frame(ArtistsList %>% 
-                   select(Artist, Count, ArtisttoLowercase) %>% 
-                   distinct(ArtisttoLowercase, .keep_all = TRUE) %>% 
-                   arrange(desc(Count), ArtisttoLowercase))
+<!-- ```{r, echo=FALSE} -->
+<!-- print.data.frame(ArtistsList %>%  -->
+<!--                    select(Artist, Count, ArtisttoLowercase) %>%  -->
+<!--                    distinct(ArtisttoLowercase, .keep_all = TRUE) %>%  -->
+<!--                    arrange(desc(Count), ArtisttoLowercase)) -->
 
-```
+<!-- ``` -->
 
 
 ## Unique Releases
+
+These are the 103 unique releases as entered by RainyDawg
 ```{r}
 print.data.frame(weightedReleasesList %>% 
                    distinct(TitletoLowercase, .keep_all = TRUE) %>%
                    select(Artist, Title, TitletoLowercase) %>% 
                    arrange(TitletoLowercase))
+write.xlsx(weightedReleasesList %>%
+             distinct(TitletoLowercase, .keep_all = TRUE) %>%
+             select(Artist, Title, TitletoLowercase) %>% 
+             arrange(TitletoLowercase),
+           "output/UniqueReleases.xlsx", rowNames = TRUE)
 ```
 
 
