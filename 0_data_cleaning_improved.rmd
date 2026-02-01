@@ -1,0 +1,196 @@
+---
+title: "Data Cleaning - Improved Performance"
+author: "Chris"
+date: "2025-01-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Import our Data
+
+First we pull in the spreadsheet.
+```{r import}
+library(readxl)
+library(writexl)
+library(tidyr)
+library(dplyr)
+# For better string processing performance
+library(stringr)
+
+# Load data
+data <- read_excel("data/Rainydawg_top_music_of_2024_Survey.xlsx")
+
+# Drop the first row, it's a placeholder
+data <- data[-1, ]
+
+# Fix our columns, we want unique names and no spaces
+new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes")
+colnames(data) <- new_column_names
+
+# Get the DJ names list
+djNames <- data %>% select(Name)
+```
+
+## Make it Clean
+
+Now we look at the first list...need to pull our artist and title into separate columns.
+```{r List by Count}
+# We only care about the entries at this point. DJ and names can be useful later.
+# Keep only the columns that contain artist-title pairs.
+# Also remove the Rank21 column. The original proposition was top 20,
+# I made an error on the input form, and added an extra row.
+ranking_columns <- data %>% 
+  select(Rank01:Rank20) %>% 
+  names()
+
+# Transform data from wide to long format for efficient processing
+# This replaces the first loop that processed each column individually
+long_data <- data %>%
+  select(all_of(ranking_columns)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "rank_column",
+    values_to = "artist_title"
+  ) %>%
+  # Extract rank number from column name for weight calculation
+  mutate(rank_number = as.numeric(str_extract(rank_column, "\\d+"))) %>%
+  # Remove rows with missing values
+  filter(!is.na(artist_title) & artist_title != "")
+
+# Separate artist and title in one operation
+# This replaces the loop that processed each column separately
+max_rank <- 20  # Total number of ranking positions
+decay_factor <- 0.85  # Exponential decay rate (adjustable: 0.8-0.9 typical)
+
+cleaned_data <- long_data %>%
+  separate(col = artist_title, into = c("Artist", "Title"), sep = "-+", remove = TRUE) %>%
+  # Trim whitespace from both columns
+  mutate(
+    Artist = trimws(Artist),
+    Title = trimws(Title),
+    # Borda Count: rank 1 = 20 points, rank 2 = 19 points, ..., rank 20 = 1 point
+    borda_score = (max_rank + 1) - rank_number,
+    # Exponential Decay: rank 1 = 1.0, rank 2 = 0.85, rank 3 = 0.72, etc.
+    exponential_decay = decay_factor ^ (rank_number - 1)
+  ) %>%
+  # Remove rows with missing artist or title
+  filter(!is.na(Artist) & !is.na(Title) & Artist != "" & Title != "")
+
+# Fix incorrectly input title
+cleaned_data$Title <- gsub("I LAY MY LIFE DOWN FOR YOU", "I LAY DOWN MY LIFE FOR YOU", cleaned_data$Title)
+
+# Put artist and title into lowercase for consistent matching
+# Apply all string normalizations in a single mutate call for efficiency
+countedEntriesList <- cleaned_data %>%
+  mutate(
+    ArtisttoLowercase = tolower(Artist),
+    TitletoLowercase = tolower(Title),
+    TitletoLowercase = str_replace_all(TitletoLowercase, "&", "and"),
+    TitletoLowercase = str_remove_all(TitletoLowercase, "[[:punct:]]"),
+    ArtisttoLowercase = iconv(ArtisttoLowercase, from = "UTF-8", to = "ASCII//TRANSLIT"),
+    ArtisttoLowercase = str_remove_all(ArtisttoLowercase, "[[:punct:]]"),
+    # Handle specific cases
+    TitletoLowercase = gsub("brat and its completely different but also still brat", "brat", TitletoLowercase),
+    ArtisttoLowercase = gsub("caroline polacheck", "caroline polachek", ArtisttoLowercase)
+  )
+
+countedEntriesList
+```
+
+We use stringdist below with a pre-filtering optimization. Instead of O(n²) comparisons,
+we build a canonical map once, then use O(1) lookups per row.
+```{r}
+# Install and load the stringdist package
+##install.packages("stringdist")
+library(stringdist)
+
+# Build a canonical map: maps each unique string to its "canonical" form
+# Pre-filters by string length to reduce comparisons
+build_canonical_map <- function(strings, max_dist = 1) {
+  unique_strings <- unique(strings)
+  n <- length(unique_strings)
+  
+  if (n == 0) return(character(0))
+  
+  # Initialize: first string is its own canonical form
+
+  canonical <- character(n)
+  canonical[1] <- unique_strings[1]
+  
+  for (i in 2:n) {
+    current <- unique_strings[i]
+    len_current <- nchar(current)
+    
+    # Pre-filter: only compare against strings with similar length (±max_dist chars)
+    # This is valid because edit distance >= |len_a - len_b|
+    candidates_idx <- which(abs(nchar(unique_strings[1:(i-1)]) - len_current) <= max_dist)
+    
+    if (length(candidates_idx) > 0) {
+      # Compare only against length-filtered candidates
+      dists <- stringdist(current, unique_strings[candidates_idx], method = "lv")
+      best_match_idx <- which.min(dists)
+      
+      if (dists[best_match_idx] <= max_dist) {
+        # Map to the canonical form of the best match
+        canonical[i] <- canonical[candidates_idx[best_match_idx]]
+      } else {
+        canonical[i] <- current
+      }
+    } else {
+      canonical[i] <- current
+    }
+  }
+  
+  # Return named vector for O(1) lookup
+  setNames(canonical, unique_strings)
+}
+
+# Build canonical maps for artists and titles (done ONCE)
+artist_canonical_map <- build_canonical_map(countedEntriesList$ArtisttoLowercase, max_dist = 1)
+title_canonical_map <- build_canonical_map(countedEntriesList$TitletoLowercase, max_dist = 1)
+
+# Apply canonical mapping and count - O(n) instead of O(n²)
+ArtistsList <- countedEntriesList %>%
+  mutate(CanonicalArtist = artist_canonical_map[ArtisttoLowercase]) %>%
+  group_by(CanonicalArtist) %>%
+  mutate(Count = n()) %>%
+  ungroup()
+
+# Count occurrences of each artist name and deduplicate
+countedArtistsList <- ArtistsList %>%
+  group_by(Artist) %>%
+  summarise(Count = n())
+
+# Save our list of artists and count of appearances
+write_xlsx(ArtistsList, "output/countedArtistsList.xlsx")
+```
+
+Then we do a similar thing for our Releases, using the pre-built canonical map.
+```{r}
+# Apply canonical mapping for releases - O(n) lookups
+countedReleasesList <- countedEntriesList %>%
+  mutate(CanonicalTitle = title_canonical_map[TitletoLowercase]) %>%
+  group_by(CanonicalTitle) %>%
+  mutate(CountOfMentions = n()) %>%
+  ungroup()
+
+# Save our list of releases and count of appearances
+write_xlsx(countedReleasesList, "output/countedReleasesList.xlsx")
+```
+
+Creating weighted lists (Borda and Exponential Decay)
+```{r}
+# Create weighted list with both scoring methods using efficient grouping
+df <- countedReleasesList %>%
+  group_by(TitletoLowercase) %>%
+  mutate(
+    borda_sum = sum(borda_score),
+    exponential_decay_sum = sum(exponential_decay)
+  ) %>%
+  ungroup()
+
+write_xlsx(df, "output/weightedReleasesList.xlsx")
+```
