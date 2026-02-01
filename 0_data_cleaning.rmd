@@ -9,153 +9,155 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Import our Data
+<!-- ## Import our Data -->
 
-First we pull in the spreadsheet.
-```{r import}
-library(readxl)
-library(writexl)
-data <- read_excel("data/Rainydawg_top_music_of_2024_Survey.xlsx")
-## What are we looking at here, let's summary()
-#summary(data)
+<!-- First we pull in the spreadsheet. -->
+<!-- ```{r import} -->
+<!-- library(readxl) -->
+<!-- library(writexl) -->
+<!-- data <- read_excel("data/Rainydawg_top_music_of_2024_Survey.xlsx") -->
+<!-- ## What are we looking at here, let's summary() -->
+<!-- #summary(data) -->
 
-library(tidyr)
-library(dplyr)
-#Here we drop the first row, it's a placeholder
-data <- data[-1, ]
+<!-- library(tidyr) -->
+<!-- library(dplyr) -->
+<!-- #Here we drop the first row, it's a placeholder -->
+<!-- data <- data[-1, ] -->
 
-# create a new empty, list() for all our entries
-entries_list <- list()
+<!-- # create a new empty, list() for all our entries -->
+<!-- entries_list <- list() -->
 
-#Fix our columns, we want unique names and no spaces. Plug it in.
-new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes")
-colnames(data) <- new_column_names
-data
-## get the DJ names list
-djNames <- data %>%  select(Name)
-
-
-```
-
-## Make it Clean
-Now we look at the first list...need to pull our artist and title into separate columns.
-```{r List by Count}
-
-## We only care about the entries at this point. DJ and
-##names can be useful later.
-## Keep only the columns that contain artist-title pairs.
-## also remove the Rank21 column. The original proposition was was top 20,
-## I made an error on the input form, and added an extra row.
-data <- data %>% select(-Timestamp, 
-                    -Email,
-                    -Name,
-                    -Role,
-                    -Rank21, 
-                    -Extra,
-                    -Notes)
-
-# take each column, separate them into two columns for artist and title, 
-# and trim the whitespace and save into entries_list()
-for (column in names(data)) {
-  temp_df <- data.frame(Column = data[[column]])
-  temp_entries <- temp_df %>% 
-    separate(col = Column, into = c("Artist", "Title"), sep = "-+", remove = TRUE) %>% 
-    mutate(across(c(Artist, Title), trimws))
-  entries_list[[length(entries_list) + 1]] <- temp_entries
-}
-
-# Loop through the list of dataframes
-for (i in 1:length(entries_list)) {
-  # Calculate the weight value based on the position in the list
-  weight_value <- 1 / i
-  
-  # Add a new column 'weight' to the current dataframe
-  entries_list[[i]]$weight <- rep(weight_value, nrow(entries_list[[i]]))
-}
+<!-- #Fix our columns, we want unique names and no spaces. Plug it in. -->
+<!-- new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes") -->
+<!-- colnames(data) <- new_column_names -->
+<!-- data -->
+<!-- ## get the DJ names list -->
+<!-- djNames <- data %>%  select(Name) -->
 
 
-#Create a new list for sorting popular count
-countedEntriesList <- bind_rows(entries_list)
-## you need to catch this title bc it was input incorrectly
-countedEntriesList$Title <- gsub("I LAY MY LIFE DOWN FOR YOU", "I LAY DOWN MY LIFE FOR YOU", countedEntriesList$Title)
+<!-- ``` -->
 
-#Drop any rows that are incomplete
-countedEntriesList <- drop_na(countedEntriesList) 
-#Put the artist into lowercase for all entries
-countedEntriesList$ArtisttoLowercase <- tolower(countedEntriesList$Artist)
-#Put the title into lowercase for all entries
-countedEntriesList$TitletoLowercase <- tolower(countedEntriesList$Title)
+<!-- ## Make it Clean -->
+<!-- Now we look at the first list...need to pull our artist and title into separate columns. -->
+<!-- ```{r List by Count} -->
 
-library(stringr)
-countedEntriesList$TitletoLowercase <- str_replace_all(countedEntriesList$TitletoLowercase, "&", "and")
-countedEntriesList$TitletoLowercase <- str_remove_all(countedEntriesList$TitletoLowercase, "[[:punct:]]")
-countedEntriesList$ArtisttoLowercase <- iconv(countedEntriesList$ArtisttoLowercase, from = "UTF-8", to = "ASCII//TRANSLIT")
-countedEntriesList$ArtisttoLowercase <- str_remove_all(countedEntriesList$ArtisttoLowercase, "[[:punct:]]")
-## Q1: do we count brat and brat remix as the same release?
-countedEntriesList$TitletoLowercase <- gsub("brat and its completely different but also still brat", "brat", countedEntriesList$TitletoLowercase)
-## clean more incorrect inputs
-countedEntriesList$ArtisttoLowercase <- gsub("caroline polacheck", "caroline polachek", countedEntriesList$ArtisttoLowercase)
-countedEntriesList
+<!-- ## We only care about the entries at this point. DJ and -->
+<!-- ##names can be useful later. -->
+<!-- ## Keep only the columns that contain artist-title pairs. -->
+<!-- ## also remove the Rank21 column. The original proposition was was top 20, -->
+<!-- ## I made an error on the input form, and added an extra row. -->
+<!-- data <- data %>% select(-Timestamp,  -->
+<!--                     -Email, -->
+<!--                     -Name, -->
+<!--                     -Role, -->
+<!--                     -Rank21,  -->
+<!--                     -Extra, -->
+<!--                     -Notes) -->
+
+<!-- # take each column, separate them into two columns for artist and title,  -->
+<!-- # and trim the whitespace and save into entries_list() -->
+<!-- for (column in names(data)) { -->
+<!--   temp_df <- data.frame(Column = data[[column]]) -->
+<!--   temp_entries <- temp_df %>%  -->
+<!--     separate(col = Column, into = c("Artist", "Title"), sep = "-+", remove = TRUE) %>%  -->
+<!--     mutate(across(c(Artist, Title), trimws)) -->
+<!--   entries_list[[length(entries_list) + 1]] <- temp_entries -->
+<!-- } -->
+
+<!-- # Loop through the list of dataframes -->
+<!-- # Using Borda Count: #1 gets max points, #2 gets max-1, etc. -->
+<!-- max_rank <- length(entries_list)  # Total number of ranking positions (20) -->
+<!-- for (i in 1:length(entries_list)) { -->
+<!--   # Borda Count: rank 1 = 20 points, rank 2 = 19 points, ..., rank 20 = 1 point -->
+<!--   borda_score <- (max_rank + 1) - i -->
+
+<!--   # Add a new column 'borda_score' to the current dataframe -->
+<!--   entries_list[[i]]$borda_score <- rep(borda_score, nrow(entries_list[[i]])) -->
+<!-- } -->
 
 
-```
-We use stringdist below, to make a comparison of the artist name against the vector,
-ask it to be within a threshold of 2 differences.
-```{r}
-# Install and load the stringdist package
-##install.packages("stringdist")
-library(stringdist)
+<!-- #Create a new list for sorting popular count -->
+<!-- countedEntriesList <- bind_rows(entries_list) -->
+<!-- ## you need to catch this title bc it was input incorrectly -->
+<!-- countedEntriesList$Title <- gsub("I LAY MY LIFE DOWN FOR YOU", "I LAY DOWN MY LIFE FOR YOU", countedEntriesList$Title) -->
 
-# Create a copy of countedReleasesList
-ArtistsList <- countedEntriesList
+<!-- #Drop any rows that are incomplete -->
+<!-- countedEntriesList <- drop_na(countedEntriesList)  -->
+<!-- #Put the artist into lowercase for all entries -->
+<!-- countedEntriesList$ArtisttoLowercase <- tolower(countedEntriesList$Artist) -->
+<!-- #Put the title into lowercase for all entries -->
+<!-- countedEntriesList$TitletoLowercase <- tolower(countedEntriesList$Title) -->
 
-unique_artists <- unique(countedEntriesList$ArtisttoLowercase)
-# Iterate through ArtistsList
-for (i in 1:nrow(ArtistsList)) {
-  artist <- ArtistsList$ArtisttoLowercase[i]
-  similar_artists <- unique_artists[stringdist(artist, unique_artists) <= 1]
-  ArtistsList$Count[i] <- sum(ArtistsList$ArtisttoLowercase %in% similar_artists)
-}
+<!-- library(stringr) -->
+<!-- countedEntriesList$TitletoLowercase <- str_replace_all(countedEntriesList$TitletoLowercase, "&", "and") -->
+<!-- countedEntriesList$TitletoLowercase <- str_remove_all(countedEntriesList$TitletoLowercase, "[[:punct:]]") -->
+<!-- countedEntriesList$ArtisttoLowercase <- iconv(countedEntriesList$ArtisttoLowercase, from = "UTF-8", to = "ASCII//TRANSLIT") -->
+<!-- countedEntriesList$ArtisttoLowercase <- str_remove_all(countedEntriesList$ArtisttoLowercase, "[[:punct:]]") -->
+<!-- ## Q1: do we count brat and brat remix as the same release? -->
+<!-- countedEntriesList$TitletoLowercase <- gsub("brat and its completely different but also still brat", "brat", countedEntriesList$TitletoLowercase) -->
+<!-- ## clean more incorrect inputs -->
+<!-- countedEntriesList$ArtisttoLowercase <- gsub("caroline polacheck", "caroline polachek", countedEntriesList$ArtisttoLowercase) -->
+<!-- countedEntriesList -->
 
-# Count occurrences of each artist name and deduplicate
-countedArtistsList <- ArtistsList %>% 
-  group_by(Artist) %>% 
-  summarise(Count = n()) 
-ArtistsList
-#Save our list of artists and count of appearances. Need to manually check this before
-#using it later.
-# Install and load the writexl package
-#install.packages("writexl")
 
-write_xlsx(ArtistsList, "output/countedArtistsList.xlsx")
-# NOTE:
-# you still have to clean this, the Waxahatchee ft MJL will get missed.
+<!-- ``` -->
+<!-- We use stringdist below, to make a comparison of the artist name against the vector, -->
+<!-- ask it to be within a threshold of 2 differences. -->
+<!-- ```{r} -->
+<!-- # Install and load the stringdist package -->
+<!-- ##install.packages("stringdist") -->
+<!-- library(stringdist) -->
 
-```
-Then we do a similar thing for our Releases, and we go back to our entries.
+<!-- # Create a copy of countedReleasesList -->
+<!-- ArtistsList <- countedEntriesList -->
 
-```{r}
-# Create a copy of countedReleasesList
+<!-- unique_artists <- unique(countedEntriesList$ArtisttoLowercase) -->
+<!-- # Iterate through ArtistsList -->
+<!-- for (i in 1:nrow(ArtistsList)) { -->
+<!--   artist <- ArtistsList$ArtisttoLowercase[i] -->
+<!--   similar_artists <- unique_artists[stringdist(artist, unique_artists) <= 1] -->
+<!--   ArtistsList$Count[i] <- sum(ArtistsList$ArtisttoLowercase %in% similar_artists) -->
+<!-- } -->
 
-countedReleasesList <- countedEntriesList
-countedReleasesList$CountOfMentions <- sapply(seq_along(countedReleasesList$TitletoLowercase), function(i) sum(stringdist::stringdist(countedReleasesList$TitletoLowercase[i], countedReleasesList$TitletoLowercase) <= 1))
-countedReleasesList 
-#Save our list of releases and count of appearances. Need to manually check this before
-#using it later.
-write_xlsx(countedReleasesList, "output/countedReleasesList.xlsx")
-```
-Creating a weighted list
-```{r}
- 
+<!-- # Count occurrences of each artist name and deduplicate -->
+<!-- countedArtistsList <- ArtistsList %>%  -->
+<!--   group_by(Artist) %>%  -->
+<!--   summarise(Count = n())  -->
+<!-- ArtistsList -->
+<!-- #Save our list of artists and count of appearances. Need to manually check this before -->
+<!-- #using it later. -->
+<!-- # Install and load the writexl package -->
+<!-- #install.packages("writexl") -->
 
-#Create a new list for sorting popular count
-weightedReleasesList <- countedEntriesList
+<!-- write_xlsx(ArtistsList, "output/countedArtistsList.xlsx") -->
+<!-- # NOTE: -->
+<!-- # you still have to clean this, the Waxahatchee ft MJL will get missed. -->
 
-df <- weightedReleasesList %>% 
-  group_by(TitletoLowercase) %>% 
-  mutate(sum = sum(weight)) %>% 
-  ungroup()
+<!-- ``` -->
+<!-- Then we do a similar thing for our Releases, and we go back to our entries. -->
 
-write_xlsx(df, "output/weightedReleasesList.xlsx")
-```
+<!-- ```{r} -->
+<!-- # Create a copy of countedReleasesList -->
+
+<!-- countedReleasesList <- countedEntriesList -->
+<!-- countedReleasesList$CountOfMentions <- sapply(seq_along(countedReleasesList$TitletoLowercase), function(i) sum(stringdist::stringdist(countedReleasesList$TitletoLowercase[i], countedReleasesList$TitletoLowercase) <= 1)) -->
+<!-- countedReleasesList  -->
+<!-- #Save our list of releases and count of appearances. Need to manually check this before -->
+<!-- #using it later. -->
+<!-- write_xlsx(countedReleasesList, "output/countedReleasesList.xlsx") -->
+<!-- ``` -->
+<!-- Creating a Borda-weighted list -->
+<!-- ```{r} -->
+
+
+<!-- #Create a new list for sorting popular count using Borda scores -->
+<!-- bordaWeightedReleasesList <- countedEntriesList -->
+
+<!-- df <- bordaWeightedReleasesList %>% -->
+<!--   group_by(TitletoLowercase) %>% -->
+<!--   mutate(borda_sum = sum(borda_score)) %>% -->
+<!--   ungroup() -->
+
+<!-- write_xlsx(df, "output/weightedReleasesList.xlsx") -->
+<!-- ``` -->
 

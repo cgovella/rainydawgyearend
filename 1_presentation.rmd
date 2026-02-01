@@ -19,6 +19,13 @@ provided by: Rainydawg DJs, Blawg Team, and Volunteers
 ```{r}
 #install.packages("openxlsx")
 library(openxlsx)
+library(dplyr)
+
+# Load required data from output files
+weightedReleasesList <- read.xlsx("output/weightedReleasesList.xlsx")
+countedReleasesList <- read.xlsx("output/countedReleasesList.xlsx")
+df <- read.xlsx("output/weightedReleasesList.xlsx")
+
 print.data.frame(djNames)
 ```
 
@@ -29,35 +36,52 @@ Everybody's favorite contribution from 2024, alphabetical by Title:
 
 ```{r}
 print.data.frame(countedReleasesList %>%
-                   select(Artist, Title, weight, TitletoLowercase) %>% 
-                   filter(weight == 1) %>% 
+                   select(Artist, Title, borda_score, TitletoLowercase) %>%
+                   filter(borda_score == 20) %>%
                    arrange(TitletoLowercase))
 # Write the dataframe to an Excel file
 write.xlsx(countedReleasesList %>%
-             select(Artist, Title, weight, TitletoLowercase) %>% 
-             filter(weight == 1) %>% 
+             select(Artist, Title, borda_score, TitletoLowercase) %>%
+             filter(borda_score == 20) %>%
              arrange(TitletoLowercase), "output/TopReleasesByNum1Votes.xlsx")
 ```
 
 ## Top Releases
 
-Weighted by rank:
-The number in the sum column is there for math, just pay attention to the list
-from top to bottom. For the ranking of each release, I calculated the weight as a fraction. The 
-numerator is always 1, and the denominator is the rank that the contributor assigned it. 
-E.g., a rank of #1 would be a weight of 1, a rank of #5 would be a weight of 1/5, or 0.2.
+Weighted by Borda Count:
+The borda_sum column shows the aggregated score. For each ranking, I calculated the Borda score
+as: (max_rank + 1) - rank. With 20 ranking positions, a #1 vote = 20 points, #2 = 19 points,
+..., #20 = 1 point. This provides a more linear weighting than the fractional method.
 ```{r pressure, echo=FALSE}
 library(dplyr)
-print.data.frame(df %>% 
-                   select(Artist, Title, sum, TitletoLowercase) %>% 
-                   distinct(TitletoLowercase, .keep_all = TRUE) %>% 
-                   arrange(desc(sum)))
+print.data.frame(df %>%
+                   select(Artist, Title, borda_sum, TitletoLowercase) %>%
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>%
+                   arrange(desc(borda_sum)))
 write.xlsx(df %>%
-             select(Artist, Title, sum, TitletoLowercase) %>% 
-                   distinct(TitletoLowercase, .keep_all = TRUE) %>% 
-                   arrange(desc(sum)), "output/TopReleases.xlsx", rowNames = TRUE)
+             select(Artist, Title, borda_sum, TitletoLowercase) %>%
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>%
+                   arrange(desc(borda_sum)), "output/TopReleases.xlsx", rowNames = TRUE)
 ```
 
+## Top Releases by Exponential Decay
+
+Weighted by Exponential Decay:
+After the initial rapid drop, the penalty rate slows down. This ensures that while new items are
+prioritized, old but highly relevant items are not completely eliminated from results. The
+decay factor of 0.85 will decrease the importance rapidly at first, but then more slowly.
+
+```{r, echo=FALSE}
+print.data.frame(df %>%
+                   select(Artist, Title, exponential_decay_sum, TitletoLowercase) %>%
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>%
+                   arrange(desc(exponential_decay_sum)))
+write.xlsx(df %>%
+             select(Artist, Title, exponential_decay_sum, TitletoLowercase) %>%
+                   distinct(TitletoLowercase, .keep_all = TRUE) %>%
+                   arrange(desc(exponential_decay_sum)),
+           "output/TopReleasesbyExponentialDecay.xlsx", rowNames = TRUE)
+```
 
 ## Top Releases by Inclusion
 
