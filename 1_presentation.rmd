@@ -19,6 +19,8 @@ provided by: Rainydawg DJs, Blawg Team, and Volunteers
 ```{r}
 #install.packages("openxlsx")
 library(openxlsx)
+#install.packages("wordcloud")
+library(wordcloud)
 library(dplyr)
 
 # Load required data from output files
@@ -99,20 +101,6 @@ write.xlsx(countedReleasesList %>%
            "output/TopReleasesbyInclusion.xlsx", rowNames = TRUE)
 ```
 
-<!-- ## Top Artists -->
-
-<!-- ## Top Artists by Inclusion -->
-
-<!-- Artists by mentions -->
-
-<!-- ```{r, echo=FALSE} -->
-<!-- print.data.frame(ArtistsList %>%  -->
-<!--                    select(Artist, Count, ArtisttoLowercase) %>%  -->
-<!--                    distinct(ArtisttoLowercase, .keep_all = TRUE) %>%  -->
-<!--                    arrange(desc(Count), ArtisttoLowercase)) -->
-
-<!-- ``` -->
-
 
 ## Unique Releases
 
@@ -129,4 +117,25 @@ write.xlsx(weightedReleasesList %>%
            "output/UniqueReleases.xlsx", rowNames = TRUE)
 ```
 
+
+# Top Artists
+
+## Top Artists by Inclusion
+
+Artists by mentions (Top 10)
+
+```{r, echo=FALSE}
+print.data.frame(ArtistsList %>%
+                   select(Artist, Count, ArtisttoLowercase) %>%
+                   distinct(ArtisttoLowercase, .keep_all = TRUE) %>%
+                   arrange(desc(Count), ArtisttoLowercase) %>%
+                   head(12))
+
+write.xlsx(ArtistsList %>%
+             select(Artist, Count, ArtisttoLowercase) %>%
+             distinct(ArtisttoLowercase, .keep_all = TRUE) %>%
+             arrange(desc(Count), ArtisttoLowercase) %>%
+             head(12),
+           "output/TopArtistsByInclusion.xlsx", rowNames = TRUE)
+```
 

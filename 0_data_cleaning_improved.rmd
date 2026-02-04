@@ -21,13 +21,52 @@ library(dplyr)
 library(stringr)
 
 # Load data
-data <- read_excel("data/Rainydawg_top_music_of_2024_Survey.xlsx")
+data <- read_excel("data/RainyDawg Radio End of 2025 Music List (Responses).xlsx")
 
 # Drop the first row, it's a placeholder
-data <- data[-1, ]
+#data <- data[-1, ]
+
+# Unfortunately, the 10th row contains data that was input by error
+# the entries are not from 2025. so we need to drop the 10th row:
+data <- data[-9, ]
+
+# Justin Bieber released 'Swag' and then a deluxe version of the same album with remixes
+# so we need to drop the cell in the 3rd row, 6th column:
+data[3, 6] <- NA
+
+# Swap phrase order in cell [13, 5] from "A - B" to "B - A"
+parts <- strsplit(as.character(data[13, 5]), " - ")[[1]]
+data[13, 5] <- paste(parts[2], parts[1], sep = " - ")
+parts <- NA
+
+parts <- strsplit(as.character(data[13, 6]), " - ")[[1]]
+data[13, 6] <- paste(parts[2], parts[1], sep = " - ")
+parts <- NA
+
+parts <- strsplit(as.character(data[13, 7]), " - ")[[1]]
+data[13, 7] <- paste(parts[2], parts[1], sep = " - ")
+parts <- NA
+
+parts <- strsplit(as.character(data[12, 5]), " - ")[[1]]
+data[12, 5] <- paste(parts[2], parts[1], sep = " - ")
+parts <- NA
+
+
+# now we should move the values one column to the left to save the votes
+data[2, 6] <- data[2, 7]
+data[2, 7] <- data[2, 8]
+data[2, 8] <- data[2, 9]
+data[2, 9] <- data[2, 10]
+data[2, 10] <- data[2, 11]
+data[2, 11] <- data[2, 12]
+data[2, 12] <- data[2, 13]
+data[2, 13] <- data[2, 14]
+data[2, 14] <- data[2, 15]
+data[2, 15] <- NA
+
 
 # Fix our columns, we want unique names and no spaces
-new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Rank13", "Rank14", "Rank15", "Rank16", "Rank 17", "Rank18", "Rank19", "Rank20", "Rank21", "Extra", "Notes")
+new_column_names <- c("Timestamp", "Email", "Name", "Role", "Rank01", "Rank02", "Rank03", "Rank04", "Rank05", "Rank06", "Rank07", "Rank08", "Rank09", "Rank10", "Rank11", "Rank12", "Notes")
 colnames(data) <- new_column_names
 
 # Get the DJ names list
@@ -43,7 +82,7 @@ Now we look at the first list...need to pull our artist and title into separate 
 # Also remove the Rank21 column. The original proposition was top 20,
 # I made an error on the input form, and added an extra row.
 ranking_columns <- data %>% 
-  select(Rank01:Rank20) %>% 
+  select(Rank01:Rank12) %>% 
   names()
 
 # Transform data from wide to long format for efficient processing
@@ -62,7 +101,7 @@ long_data <- data %>%
 
 # Separate artist and title in one operation
 # This replaces the loop that processed each column separately
-max_rank <- 20  # Total number of ranking positions
+max_rank <- 12  # Total number of ranking positions (Rank01 through Rank12)
 decay_factor <- 0.85  # Exponential decay rate (adjustable: 0.8-0.9 typical)
 
 cleaned_data <- long_data %>%
@@ -71,7 +110,7 @@ cleaned_data <- long_data %>%
   mutate(
     Artist = trimws(Artist),
     Title = trimws(Title),
-    # Borda Count: rank 1 = 20 points, rank 2 = 19 points, ..., rank 20 = 1 point
+    # Borda Count: rank 1 = 12 points, rank 2 = 11 points, ..., rank 12 = 1 point
     borda_score = (max_rank + 1) - rank_number,
     # Exponential Decay: rank 1 = 1.0, rank 2 = 0.85, rank 3 = 0.72, etc.
     exponential_decay = decay_factor ^ (rank_number - 1)
@@ -80,7 +119,13 @@ cleaned_data <- long_data %>%
   filter(!is.na(Artist) & !is.na(Title) & Artist != "" & Title != "")
 
 # Fix incorrectly input title
-cleaned_data$Title <- gsub("I LAY MY LIFE DOWN FOR YOU", "I LAY DOWN MY LIFE FOR YOU", cleaned_data$Title)
+#<!-- cleaned_data$Title <- gsub("I LAY MY LIFE DOWN FOR YOU", "I LAY DOWN MY LIFE FOR YOU", cleaned_data$Title) -->
+
+# Fix artist name spelling: "Pink Pantheress" -> "Pinkpantheress"
+cleaned_data$Artist <- gsub("Pink Pantheress", "Pinkpantheress", cleaned_data$Artist)
+
+# Fix artist name spelling: "FKA Twigs" -> "FKA twigs"
+cleaned_data$Artist <- gsub("FKA Twigs", "FKA twigs", cleaned_data$Artist)
 
 # Put artist and title into lowercase for consistent matching
 # Apply all string normalizations in a single mutate call for efficiency
